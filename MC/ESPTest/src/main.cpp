@@ -1,100 +1,92 @@
 #include <Arduino.h>
-#include "HX711.h"
 
+// Motor
 #define enB D8
-#define in3 D6
 #define in4 D7
+#define in3 D6
 
-#define DOUT  D1
-#define CLK  D2
 
+// Button
 #define button D3
 int pressed = false;
- 
-HX711 scale;
 
-//Change this calibration factor as per your load cell once it is found you many need to vary it in thousands
-long calibration_factor = -115741; //-106600 worked for my 40Kg max scale setup 
- 
+// Hall Sensors
+#define HallA D5
+#define HallB D2
+
+// ISR
+volatile int pulses = 0;//if the interrupt will change this value, it must be volatile
+
+void IRAM_ATTR interruptA();
+
+void IRAM_ATTR interruptB();
 //=============================================================================================
 //                         SETUP
 //=============================================================================================
 void setup() {
-  Serial.begin(115200);
-  scale.begin(DOUT, CLK);
-  long calibration_factor = scale.read_average(); //Get a baseline reading
-  Serial.print("Zero factor: "); //This can be used to remove the need to tare the scale. Useful in permanent scale projects.
-  Serial.println(calibration_factor);
   // Pin Modes
   pinMode(enB, OUTPUT);
   pinMode(in3, OUTPUT);
   pinMode(in4, OUTPUT);
   pinMode(button, INPUT);
-
+  pinMode(HallA, INPUT);
+  digitalWrite(HallA, HIGH);//enable internal pullup resistor
+  pinMode(HallB, INPUT);
+  digitalWrite(HallB, HIGH);//enable internal pullup resistor
+  attachInterrupt(digitalPinToInterrupt(HallA), interruptA, CHANGE);//Interrupt initialization
+  attachInterrupt(digitalPinToInterrupt(HallB), interruptB, CHANGE);//Interrupt initialization
   // Set initial rotation direction
   digitalWrite(in3, LOW);
   digitalWrite(in4, HIGH);
 
+  Serial.begin(115200);
+  analogWrite(enB, 50);
 }
  
 //=============================================================================================
 //                         LOOP
 //=============================================================================================
 void loop() {
-  analogWrite(enB, 96); // Send PWM signal to L298N Enable pin, 95 is the slowest possible 
-  // Read button - Debounce
-  if (digitalRead(button) == true) {
+  Serial.println(pulses);//see the counts advance
+  // Motor off if button is pressed
+  if (digitalRead(button) == false) {
     digitalWrite(in3, HIGH);
     digitalWrite(in4, LOW);
   } else  {
     digitalWrite(in3, LOW);
     digitalWrite(in4, HIGH);
   }
-  if (scale.is_ready()) {
-    long reading = abs(scale.read())+calibration_factor;
-    Serial.print("HX711 reading: ");
-    Serial.println(reading);
-  } else {
-    Serial.println("HX711 not found.");
-  }
-
-  delay(1000);
-  
+  delay(100);
 }
 
+void IRAM_ATTR interruptA(){
+  if (digitalRead(HallB) == 0) {
+    if (digitalRead(HallA)== 0){
+      pulses--; //moving in revers
+    } else {
+      pulses++; // Moving Forward
+    }
+  } else {
+    if (digitalRead(HallA) ==0){
+      pulses++; // Moving Forward
+    } else {
+      pulses--;
+    } 
+  }
+}//end Interrupt Service Routine (ISR)
 
-// int pwmOutput = 0 ;
-
-// void setup() {
-//   Serial.begin(115200);
-//   pinMode(enA, OUTPUT);
-//   pinMode(in1, OUTPUT);
-//   pinMode(in2, OUTPUT);
-//   // Set initial rotation direction
-//   digitalWrite(in1, LOW);
-//   digitalWrite(in2, HIGH);
-// }
-
-// void loop() {
-//   digitalWrite(LED, HIGH);
-//   Serial.println("LED is ON!");
-//   delay(1000);
-//   pinMode(LED, OUTPUT);
-//   if (Serial.available() > 0) {
-//     // read the incoming byte:
-//     pwmOutput = Serial.read();
-
-//     // say what you got:
-//     Serial.print("I received: ");
-//     Serial.println(pwmOutput, DEC);
-//     // If -1 switch direction
-//     if (pwmOutput == -1) {
-//       digitalWrite(in1, HIGH);
-//       digitalWrite(in2, LOW);
-//     } else {
-//       analogWrite(enA, pwmOutput); // Send PWM signal to L298N Enable pin
-//       digitalWrite(in1, LOW);
-//       digitalWrite(in2, HIGH);
-//     }
-//   }
-// }
+void IRAM_ATTR interruptB(){
+  if (digitalRead(HallA) == 0) {
+    if (digitalRead(HallB)== 0){
+      pulses++; 
+    } else {
+      pulses--; 
+    }
+  } else {
+    if (digitalRead(HallB) ==0){
+      pulses--; 
+    } else {
+      pulses++;
+    } 
+  }
+}//end Interrupt Service Routine (ISR)
