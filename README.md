@@ -12,6 +12,13 @@ Capstone project has as an objective to create a force feedback mechanical arm w
 - COMMS - Communications Code
 - MISC - Miscelenous
 
+## Branches
+Branches split between individual features, then merged w main.
+- main
+- motorPosition
+- multi-scale
+- remote control
+- controller
 
 
 ## Todo
