@@ -1,4 +1,6 @@
 #include <Arduino.h>
+// #include <ESP32Encoder.h>
+
 
 // Motor
 #define enB D8
@@ -16,10 +18,11 @@ int pressed = false;
 
 // ISR
 volatile int pulses = 0;//if the interrupt will change this value, it must be volatile
+bool lock = false;
 
 void IRAM_ATTR interruptA();
 
-void IRAM_ATTR interruptB();
+// void IRAM_ATTR interruptB();
 //=============================================================================================
 //                         SETUP
 //=============================================================================================
@@ -29,12 +32,13 @@ void setup() {
   pinMode(in3, OUTPUT);
   pinMode(in4, OUTPUT);
   pinMode(button, INPUT);
-  pinMode(HallA, INPUT);
-  digitalWrite(HallA, HIGH);//enable internal pullup resistor
-  pinMode(HallB, INPUT);
-  digitalWrite(HallB, HIGH);//enable internal pullup resistor
+  pinMode(HallA, INPUT_PULLUP);
+  pinMode(HallB, INPUT_PULLUP);
+  // pinMode(HallB, INPUT);
+  // digitalWrite(HallA, HIGH);//enable internal pullup resistor
+  // digitalWrite(HallB, HIGH);//enable internal pullup resistor
   attachInterrupt(digitalPinToInterrupt(HallA), interruptA, CHANGE);//Interrupt initialization
-  attachInterrupt(digitalPinToInterrupt(HallB), interruptB, CHANGE);//Interrupt initialization
+  // attachInterrupt(digitalPinToInterrupt(HallB), interruptB, CHANGE);//Interrupt initialization
   // Set initial rotation direction
   digitalWrite(in3, LOW);
   digitalWrite(in4, HIGH);
@@ -47,7 +51,11 @@ void setup() {
 //                         LOOP
 //=============================================================================================
 void loop() {
-  Serial.println(pulses);//see the counts advance
+  if (lock)
+  {
+    Serial.println(pulses);//see the counts advance
+    lock = false;
+  }
   // Motor off if button is pressed
   if (digitalRead(button) == false) {
     digitalWrite(in3, HIGH);
@@ -60,33 +68,43 @@ void loop() {
 }
 
 void IRAM_ATTR interruptA(){
-  if (digitalRead(HallB) == 0) {
-    if (digitalRead(HallA)== 0){
-      pulses--; //moving in revers
-    } else {
-      pulses++; // Moving Forward
-    }
-  } else {
-    if (digitalRead(HallA) ==0){
-      pulses++; // Moving Forward
-    } else {
-      pulses--;
-    } 
-  }
+  pulses++;
+  lock = true;
+  // if( digitalRead(HallB) == 0 ) {
+  //   if ( digitalRead(HallA) == 0 ) {
+  //     // A fell, B is low
+  //     pulses--; // moving reverse
+  //   } else {
+  //     // A rose, B is low
+  //     pulses++; // moving forward
+  //   }
+  // }else {
+  //   if ( digitalRead(HallA) == 0 ) {
+  //     // B fell, A is high
+  //     pulses++; // moving reverse
+  //   } else {
+  //     // B rose, A is high
+  //     pulses--; // moving forward
+  //   }
+  // }
 }//end Interrupt Service Routine (ISR)
 
-void IRAM_ATTR interruptB(){
-  if (digitalRead(HallA) == 0) {
-    if (digitalRead(HallB)== 0){
-      pulses++; 
-    } else {
-      pulses--; 
-    }
-  } else {
-    if (digitalRead(HallB) ==0){
-      pulses--; 
-    } else {
-      pulses++;
-    } 
-  }
-}//end Interrupt Service Routine (ISR)
+// void IRAM_ATTR interruptB(){
+//   if ( digitalRead(HallA) == 0 ) {
+//     if ( digitalRead(HallB) == 0 ) {
+//       // B fell, A is low
+//       pulses++; // moving forward
+//     } else {
+//       // B rose, A is low
+//       pulses--; // moving reverse
+//     }
+//  } else {
+//     if ( digitalRead(HallB) == 0 ) {
+//       // B fell, A is high
+//       pulses--; // moving reverse
+//     } else {
+//       // B rose, A is high
+//       pulses++; // moving forward
+//     }
+//   }
+// }//end Interrupt Service Routine (ISR)
