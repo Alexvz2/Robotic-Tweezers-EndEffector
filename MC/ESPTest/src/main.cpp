@@ -6,7 +6,15 @@
 #define DOUT1 D1    // data pin to the first lca
 #define DOUT2 D2    // data pin to the second lca
 
-#define BOOT_MESSAGE "MIT_ML_SCALE V0.8"
+// Button
+#define button D3
+unsigned long lastDebounceTime = 0;
+unsigned long debounceDelay = 50;
+int lastState = LOW; 
+int buttonState; 
+
+
+#define BOOT_MESSAGE "Initiating Multi-Scale"
 
 #define TARE_TIMEOUT_SECONDS 4
 
@@ -19,22 +27,22 @@ long int results[CHANNEL_COUNT];
 HX711MULTI scales(CHANNEL_COUNT, DOUTS, CLK);
 
 void tare();
+bool buttonPress();
 
 void setup() {
+  pinMode(CLK,OUTPUT);
   Serial.begin(115200);
   Serial.println(BOOT_MESSAGE);
-  pinMode(CLK,OUTPUT);
+  scales.set_gain(32);
   
-  tare();
 }
-
 
 void tare() {
   bool tareSuccessful = false;
 
   unsigned long tareStartTime = millis();
   while (!tareSuccessful && millis()<(tareStartTime+TARE_TIMEOUT_SECONDS*1000)) {
-    tareSuccessful = scales.tare(20,10000);  //reject 'tare' if still ringing
+    tareSuccessful = scales.tare(20,10000);
   }
 }
 
@@ -48,15 +56,32 @@ void sendRawData() {
 }
 
 void loop() {
-  
-  sendRawData(); //this is for sending raw data, for where everything else is done in processing
-
-  //on serial data (any data) re-tare
-  if (Serial.available()>0) {
-    while (Serial.available()) {
-      Serial.read();
+  if (scales.is_ready())
+  {
+    sendRawData();
+    if (buttonPress()) {
+      tare(); // Tare whenever the button is pressed
     }
-    tare();
   }
- 
+  delay(100);
+}
+
+bool buttonPress() {
+  int reading = digitalRead(button);
+
+  if (reading != lastState) {
+    lastDebounceTime = millis();
+  }
+
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    if (reading != buttonState) {
+      buttonState = reading;
+
+      if (buttonState == HIGH) {
+        return true;
+      }
+    }
+  }
+  lastState = reading;
+  return false;
 }

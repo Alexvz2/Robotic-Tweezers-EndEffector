@@ -19,8 +19,10 @@ Capstone project has as an objective to create a force feedback mechanical arm w
 - [x] Hardware Wiring and power for Demo
 - [ ] Pressure Units
     - [x] Load Cell Readings (HX711)
-    - [ ] Multi-scale Readings
+    - [x] Multi-scale Readings
     - [ ] Noise elimination
+        - [ ] Calibrate load cells 
+        - [ ] Map pressure due to gravity to orientation
 - [ ] Motor Controll
     - [x] PWM L298N Control
     - [x] PWM control + Rotation
