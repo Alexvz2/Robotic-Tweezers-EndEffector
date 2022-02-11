@@ -19,16 +19,16 @@ Capstone project has as an objective to create a force feedback mechanical arm w
 - [x] Hardware Wiring and power for Demo
 - [ ] Pressure Units
     - [x] Load Cell Readings (HX711)
-    - [ ] Multi-scale Readings
+    - [x] Multi-scale Readings
     - [ ] Noise elimination
 - [ ] Motor Controll
     - [x] PWM L298N Control
     - [x] PWM control + Rotation
-    - [ ] Hall Sensor Position Calculations
+    - [x] Hall Sensor Position Calculations
 - [ ] Claw control
     - [ ] Potientometer Rotation control
-    - [ ] Potientometer On/Off control
-    - [ ] Pressure Serial Warning
+    - [x] Potientometer On/Off control
+    - [x] Pressure Serial Warning
     - [x] wifi phone monitor
     - [ ] wifi claw control
     - [ ] XBOX control
@@ -49,4 +49,4 @@ Capstone project has as an objective to create a force feedback mechanical arm w
 ## Libraries Used
 - [HX711.h](https://github.com/bogde/HX711)
 - Arduino.h
-- [HX711-multi](https://github.com/compugician/HX711-multi)
+- [HX711-multi](https://github.com/Alexvz2/HX711-multi)
