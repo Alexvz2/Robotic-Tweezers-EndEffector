@@ -1,5 +1,4 @@
 #include <Arduino.h>
-// #include <ESP32Encoder.h>
 
 
 // Motor
@@ -22,7 +21,6 @@ bool lock = false;
 
 void IRAM_ATTR interruptA();
 
-// void IRAM_ATTR interruptB();
 //=============================================================================================
 //                         SETUP
 //=============================================================================================
@@ -33,12 +31,7 @@ void setup() {
   pinMode(in4, OUTPUT);
   pinMode(button, INPUT);
   pinMode(HallA, INPUT_PULLUP);
-  pinMode(HallB, INPUT_PULLUP);
-  // pinMode(HallB, INPUT);
-  // digitalWrite(HallA, HIGH);//enable internal pullup resistor
-  // digitalWrite(HallB, HIGH);//enable internal pullup resistor
   attachInterrupt(digitalPinToInterrupt(HallA), interruptA, CHANGE);//Interrupt initialization
-  // attachInterrupt(digitalPinToInterrupt(HallB), interruptB, CHANGE);//Interrupt initialization
   // Set initial rotation direction
   digitalWrite(in3, LOW);
   digitalWrite(in4, HIGH);
@@ -70,41 +63,4 @@ void loop() {
 void IRAM_ATTR interruptA(){
   pulses++;
   lock = true;
-  // if( digitalRead(HallB) == 0 ) {
-  //   if ( digitalRead(HallA) == 0 ) {
-  //     // A fell, B is low
-  //     pulses--; // moving reverse
-  //   } else {
-  //     // A rose, B is low
-  //     pulses++; // moving forward
-  //   }
-  // }else {
-  //   if ( digitalRead(HallA) == 0 ) {
-  //     // B fell, A is high
-  //     pulses++; // moving reverse
-  //   } else {
-  //     // B rose, A is high
-  //     pulses--; // moving forward
-  //   }
-  // }
 }//end Interrupt Service Routine (ISR)
-
-// void IRAM_ATTR interruptB(){
-//   if ( digitalRead(HallA) == 0 ) {
-//     if ( digitalRead(HallB) == 0 ) {
-//       // B fell, A is low
-//       pulses++; // moving forward
-//     } else {
-//       // B rose, A is low
-//       pulses--; // moving reverse
-//     }
-//  } else {
-//     if ( digitalRead(HallB) == 0 ) {
-//       // B fell, A is high
-//       pulses--; // moving reverse
-//     } else {
-//       // B rose, A is high
-//       pulses++; // moving forward
-//     }
-//   }
-// }//end Interrupt Service Routine (ISR)
