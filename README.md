@@ -24,17 +24,18 @@ Branches split between individual features, then merged w main.
 ## Todo
 - [x] Printed 3d Prototype
 - [x] Hardware Wiring and power for Demo
-- [ ] Pressure Units
+- [x] Pressure Units
     - [x] Load Cell Readings (HX711)
-    - [ ] Multi-scale Readings
+    - [x] Multi-scale Readings
     - [ ] Noise elimination
 - [ ] Motor Controll
     - [x] PWM L298N Control
     - [x] PWM control + Rotation
     - [ ] Hall Sensor Position Calculations
 - [ ] Claw control
-    - [ ] Potientometer Rotation control
-    - [ ] Potientometer On/Off control
+    - [x] Potientometer Rotation control
+    - [x] Potientometer On/Off control
+    - [x] Potientometer Direction
     - [ ] Pressure Serial Warning
     - [x] wifi phone monitor
     - [ ] wifi claw control
