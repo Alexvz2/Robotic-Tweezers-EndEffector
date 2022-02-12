@@ -20,13 +20,16 @@ Capstone project has as an objective to create a force feedback mechanical arm w
 - [ ] Pressure Units
     - [x] Load Cell Readings (HX711)
     - [x] Multi-scale Readings
-    - [ ] Noise elimination
-- [ ] Motor Controll
+    - [x] Noise elimination (Tare Function)
+    - [ ] LoadCell calibration
+    - [ ] Pressure Mapping to angle / calibration
+- [] Motor Controll
     - [x] PWM L298N Control
     - [x] PWM control + Rotation
     - [x] Hall Sensor Position Calculations
+    - [] 2x encoder ISR +-
 - [ ] Claw control
-    - [ ] Potientometer Rotation control
+    - [x] Potientometer Rotation control
     - [x] Potientometer On/Off control
     - [x] Pressure Serial Warning
     - [x] wifi phone monitor
