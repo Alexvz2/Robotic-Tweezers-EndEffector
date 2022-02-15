@@ -12,18 +12,25 @@ Capstone project has as an objective to create a force feedback mechanical arm w
 - COMMS - Communications Code
 - MISC - Miscelenous
 
+## Branches
+Branches split between individual features, then merged w main.
+- main
+- motorPosition
+- multi-scale
+- remote control
+- controller
 
 
 ## Todo
 - [x] Printed 3d Prototype
 - [x] Hardware Wiring and power for Demo
-- [ ] Pressure Units
+- [x] Pressure Units
     - [x] Load Cell Readings (HX711)
     - [x] Multi-scale Readings
     - [x] Noise elimination (Tare Function)
     - [ ] LoadCell calibration
     - [ ] Pressure Mapping to angle / calibration
-- [] Motor Controll
+- [ ] Motor Controll
     - [x] PWM L298N Control
     - [x] PWM control + Rotation
     - [x] Hall Sensor Position Calculations
