@@ -1,7 +1,6 @@
 #include <Arduino.h>
 
-#include <TimerThree.h>
-#include <TimerOne.h>
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -11,110 +10,111 @@ int tick = 0;
 float pos = 0;
 int PWMPin1 = 7;
 int PWMPin2 = 8;
-
+int hallA = 33;
+int hallB = 34;
+int inputPin = 38;
 float duty, des, w, posOld;
 bool forw;
-int hallb = 2;
-float i;
+
+int lastHall = 2;
 float vel, error, volt;
 float testCurrent = 0;
 
+
+
+
 void setup() {
-    forw = false;
-    des = 0;
-    posOld = 0;
-    w = 0;
+
     Serial.begin(9600);
-    pinMode(PWMPin1, OUTPUT);   // Setting PWM pins as outputs
-    pinMode(PWMPin2, OUTPUT);
-    pinMode(35, OUTPUT);
-    pinMode(33, INPUT_PULLUP);
-    pinMode(34, INPUT_PULLUP);
-    pinMode(38, INPUT);
-    pinMode(14, INPUT);
-    pinMode(39, INPUT_PULLUP);
-    digitalWrite(35, 1);
 
+    setupPins();
 
+    calibrateMotor();
 
-
-
-
-
-    analogWrite(PWMPin1, 1024 * 0.06);
-    analogWrite(PWMPin2, 0);
-    delay(1000);
-    analogWrite(PWMPin1, 0);
-    analogWrite(PWMPin2, 0);
-    delay(1000);
-
-    Serial.println("Calibration Finished");
-
-    attachInterrupt(digitalPinToInterrupt(33), interruptA, CHANGE);
-
+    attachInterrupt(digitalPinToInterrupt(hallA), interruptA, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(hallB), interruptB, CHANGE);
     delay(2000);
 
-    tick = 0;
-    pos = 0;
-    des = 0;
 
-    Serial.println(3.3 / 1024 * analogRead(38));
+    /*
     Timer1.initialize(1000);                // Initializes as 1ms timer
     Timer1.attachInterrupt(PWMLoop);
+    */
+
+    setupTimer();
+
+
     interrupts();
 
-
-
     delay(1000);
-    i = 0;
-    for (int n = 0; n < 10; n++)
-        i = i + analogRead(14);
-
-    i = i / 10;
-    i = (778 - i) * 3.3 / 1024 / 0.185 - 0.35;
-    Serial.println(i);
-
-
 
 }
+
+
+
+
 
 void interruptA() {
 
 
     noInterrupts();
 
+    if (lastHall == 2)
+        lastHall = 0;
 
-
-    if (hallb == 2)
-        hallb = digitalRead(34);
-
-    if (digitalRead(34) == hallb)
+    if (lastHall == 0)
         forw = !forw;
 
-    hallb = digitalRead(34);
+    lastHall = 0;
 
     if (forw)
         tick++;
     else
         tick--;
 
-    pos = tick / 65.25;
+    pos = tick / 65.25 / 2;
+
+    interrupts();
+
+
+
+}
+
+void interruptB() {
+    noInterrupts();
+
+    if (lastHall == 2)
+        lastHall = 1;
+
+    if (lastHall == 1)
+        forw = !forw;
+
+    lastHall = 1;
+
+    if (forw)
+        tick++;
+    else
+        tick--;
+
+    pos = tick / 65.25 / 2;
 
     interrupts();
 
 
 }
 
-void PWMLoop(void) {
+void setupTimer() {
 
 
 
+    timer = timerBegin(0, 80, true);
+    timerAttachInterrupt(timer, &PWMLoop, true);
+    timerAlarmWrite(timer, 1000, true);
+    timerAlarmEnable(timer);
 
+}
 
-
-    vel = (pos - posOld) / 0.001;
-
-
+void IRAM_ATTR PWMLoop(void) {
 
     error = pos - des;
 
@@ -123,8 +123,7 @@ void PWMLoop(void) {
 
     w = w + error * 0.001;
 
-    // volt = -1.632*pos-0.0074*i-5.6408*w;
-    volt = -5.3183 * pos - 0.0 * i - 55.6771 * w;
+    volt = -5.3183 * pos - 55.6771 * w;
     duty = volt * 100 / 5;
 
     if (duty > 0) {
@@ -135,33 +134,34 @@ void PWMLoop(void) {
         analogWrite(PWMPin1, -duty * 1024 / 100);
         analogWrite(PWMPin2, 0);
     }
-
-
-    posOld = pos;
-
 }
+
+
 
 
 void loop() {
     // put your main code here, to run repeatedly:
     float x;
 
-
-    Serial.println(3.3 / 1024 * analogRead(38));
+    Serial.println(3.3 / 1024 * analogRead(inputPin));
     Serial.print("pos: ");
     Serial.println(pos);
     Serial.print("des: ");
     Serial.println(des);
 
-    x = averageReading(38);
+    x = averageReading(inputPin) * 0.454543632 * 3.3 / 1024;
+    if (x - des > 0.01) {
+        des = des + 0.01;
+    }
+    else if (x - des < -0.01) {
+        des = des - 0.01;
+    }
+    else {
+        des = x;
+    }
 
 
-    if (3.3 / 1024 * x > 3.2)
-        des = 2;
-    else if (3.3 / 1024 * x < 3.1)
-        des = 0;
-    else
-        des = (3.3 / 1024 * x - 3.1) * 20;
+    des = x;        // des is 1.5 at 3.3v reading
 
     delay(10);
 
@@ -172,9 +172,38 @@ void loop() {
             analogWrite(PWMPin2, 0);
         }
     }
-
 }
 
+void calibrateMotor() {
+    analogWrite(PWMPin1, 0);
+    analogWrite(PWMPin2, 1024 * 0.06);
+    delay(200);
+    analogWrite(PWMPin1, 1024 * 0.06);
+    analogWrite(PWMPin2, 0);
+    delay(1000);
+    analogWrite(PWMPin1, 0);
+    analogWrite(PWMPin2, 0);
+    delay(1000);
+
+    tick = 0;
+    pos = 0;
+    des = 0;
+    w = 0;
+    Serial.println("Calibration Finished");
+}
+
+
+
+void setupPins() {
+    pinMode(PWMPin1, OUTPUT);   // Setting PWM pins as outputs
+    pinMode(PWMPin2, OUTPUT);
+    pinMode(35, OUTPUT);
+    pinMode(hallA, INPUT_PULLUP);
+    pinMode(hallB, INPUT_PULLUP);
+    pinMode(inputPin, INPUT);
+    digitalWrite(35, 1);
+
+}
 
 float averageReading(int pin) {
     float x = 0;
@@ -182,7 +211,4 @@ float averageReading(int pin) {
         x = x + analogRead(pin);
     x = x / 20;
     return x;
-
-
-
 }
