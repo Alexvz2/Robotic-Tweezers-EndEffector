@@ -8,9 +8,14 @@
 #define PWMPin2 2
 #define hallA 5
 #define hallB 4
+#define hallA2 9
+#define hallB2 8
 #define inputPin 1
+#define clientPWM1 7
+#define clientPWM2 6
 float v;
 int tick = 0;
+int tick2 = 0;
 float pos = 0;
 
 int test = 0;
@@ -23,7 +28,7 @@ bool forw;
 int lastHall = 2;
 float vel, error, volt;
 float testCurrent = 0;
-int sense1, sense2, senseOld1, senseOld2;
+int sense1, sense2, senseOld1, senseOld2, sense12, sense22, senseOld12, senseOld22;
 
 ESP32Timer ITimer0(0);
 void setupPins();
@@ -36,7 +41,11 @@ void interruptB();
 
 bool IRAM_ATTR PWMLoop(void* timerNo) {
 
-    error = pos - des;
+    if (des < 0) {
+        error = pos;
+    }
+    else
+        error = pos - des;
 
     if (abs(error) < 1.0 / 60)
         error = 0;
@@ -80,7 +89,18 @@ void setup() {
 
     attachInterrupt(digitalPinToInterrupt(hallA), hallSense, CHANGE);
     attachInterrupt(digitalPinToInterrupt(hallB), hallSense, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(hallA2), hallSense2, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(hallB2), hallSense2, CHANGE);
+    delay(1000);
+    analogWrite(clientPWM1, 0);
+    analogWrite(clientPWM2, 1024 * 0.04);
+    delay(350);
+    analogWrite(clientPWM1, 0);
+    analogWrite(clientPWM2, 0);
+
     delay(2000);
+
+
 
 
     /*
@@ -95,6 +115,8 @@ void setup() {
 
     delay(1000);
 
+    analogWrite(clientPWM1, 0);
+    analogWrite(clientPWM2, 1024 * 0.04);
 }
 
 
@@ -140,51 +162,45 @@ void hallSense() {
 
 }
 
-
-void interruptA() {
+void hallSense2() {
 
 
     noInterrupts();
 
-    if (lastHall == 2)
-        lastHall = 0;
+    sense12 = digitalRead(hallA2);
+    sense22 = digitalRead(hallB2);
 
-    if (lastHall == 0)
-        forw = !forw;
+    if (senseOld12 && senseOld22) {
+        if (sense12 && !sense22)
+            des = des + 1 / 65.25 / 2 * (1.3 / 0.4);
+        if (!sense12 && sense22)
+            des = des - 1 / 65.25 / 2 * (1.3 / 0.4);
+    }
+    else if (senseOld12 && !senseOld22) {
+        if (!sense12 && !sense22)
+            des = des + 1 / 65.25 / 2 * (1.3 / 0.4);
+        if (sense12 && sense22)
+            des = des - 1 / 65.25 / 2 * (1.3 / 0.4);
+    }
+    else if (!senseOld12 && !senseOld22) {
+        if (!sense12 && sense22)
+            des = des + 1 / 65.25 / 2 * (1.3 / 0.4);
+        if (sense12 && !sense22)
+            des = des - 1 / 65.25 / 2 * (1.3 / 0.4);
+    }
+    else if (!senseOld12 && senseOld22) {
+        if (sense12 && sense22)
+            des = des + 1 / 65.25 / 2 * (1.3 / 0.4);
+        if (!sense12 && !sense22)
+            des = des - 1 / 65.25 / 2 * (1.3 / 0.4);
+    }
 
-    lastHall = 0;
 
-    if (forw)
-        tick++;
-    else
-        tick--;
 
-    pos = tick / 65.25 / 2;
-
-    interrupts();
-
-}
-
-void interruptB() {
-    noInterrupts();
-
-    if (lastHall == 2)
-        lastHall = 1;
-
-    if (lastHall == 1)
-        forw = !forw;
-
-    lastHall = 1;
-
-    if (forw)
-        tick++;
-    else
-        tick--;
-
-    pos = tick / 65.25 / 2;
+    senseOld12 = sense12;
+    senseOld22 = sense22;
 
     interrupts();
-
 
 }
 
@@ -203,13 +219,15 @@ void loop() {
     Serial.print("des: ");
     Serial.println(des);
 
-    x = averageReading(inputPin) * 0.393938 * 3.3 / 8192;
+    if (des < 0) {
+        analogWrite(clientPWM1, 0);
+        analogWrite(clientPWM2, 0);
+    }
+    else {
+        analogWrite(clientPWM1, 0);
+        analogWrite(clientPWM2, 1024 * 0.04);
+    }
 
-    des = x;
-
-
-
-    des = x;        // des is 1.5 at 3.3v reading
 
     delay(1);
 
@@ -227,17 +245,21 @@ void loop() {
 void calibrateMotor() {
     analogWrite(PWMPin1, 0);
     analogWrite(PWMPin2, 1024 * 0.04);
+    analogWrite(clientPWM1, 1024 * 0.04);
+    analogWrite(clientPWM2, 0);
     delay(200);
     analogWrite(PWMPin1, 1024 * 0.04);
     analogWrite(PWMPin2, 0);
     delay(1000);
     analogWrite(PWMPin1, 0);
     analogWrite(PWMPin2, 0);
+    analogWrite(clientPWM1, 0);
+    analogWrite(clientPWM2, 0);
     delay(1000);
 
     tick = 0;
     pos = 0;
-    des = 0;
+    des = 1.3;
     w = 0;
     Serial.println("Calibration Finished");
 }
@@ -247,8 +269,12 @@ void calibrateMotor() {
 void setupPins() {
     pinMode(PWMPin1, OUTPUT);   // Setting PWM pins as outputs
     pinMode(PWMPin2, OUTPUT);
+    pinMode(clientPWM1, OUTPUT);
+    pinMode(clientPWM2, OUTPUT);
     pinMode(hallA, INPUT_PULLUP);
     pinMode(hallB, INPUT_PULLUP);
+    pinMode(hallA2, INPUT_PULLUP);
+    pinMode(hallB2, INPUT_PULLUP);
     pinMode(inputPin, INPUT);
 
 }
