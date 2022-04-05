@@ -6,6 +6,13 @@
 #define DOUT1 D1    // data pin to the first lca
 #define DOUT2 D2    // data pin to the second lca
 
+// Button
+#define button D4
+unsigned long lastDebounceTime = 0;
+unsigned long debounceDelay = 50;
+int lastState = LOW; 
+int buttonState; 
+
 // Load Cell Definitions
 #define TARE_TIMEOUT_SECONDS 4
 
@@ -45,6 +52,8 @@ bool lock = false;
 void IRAM_ATTR interruptA();
 void motorRotation(bool);
 void sendRawData();
+void tare();
+bool buttonPress();
 
 //=============================================================================================
 //                         SETUP
@@ -57,6 +66,7 @@ void setup() {
   pinMode(in3, OUTPUT);
   pinMode(in4, OUTPUT);
   pinMode(Dir, INPUT);
+  pinMode(button, INPUT);
   pinMode(HallA, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(HallA), interruptA, CHANGE);//Interrupt initialization
 
@@ -85,8 +95,11 @@ void loop() {
   // Load Cells
   if (scales.is_ready())
   {
-    sendRawData();}
-
+    sendRawData();
+    if (buttonPress()) {
+      tare(); // Tare whenever the button is pressed
+    }
+  }
   // Direction Logic
   direction = digitalRead(Dir);
   if (direction != prevDir) // conditional to only call function on change
@@ -117,6 +130,35 @@ void sendRawData() {
     Serial.print( (i!=scales.get_count()-1)?"\t":"\n");
   }  
   delay(10);
+}
+
+void tare() {
+  bool tareSuccessful = false;
+
+  unsigned long tareStartTime = millis();
+  while (!tareSuccessful && millis()<(tareStartTime+TARE_TIMEOUT_SECONDS*1000)) {
+    tareSuccessful = scales.tare(20,10000);  //reject 'tare' if still ringing
+  }
+}
+
+bool buttonPress() {
+  int reading = !digitalRead(button);
+
+  if (reading != lastState) {
+    lastDebounceTime = millis();
+  }
+
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    if (reading != buttonState) {
+      buttonState = reading;
+
+      if (buttonState == HIGH) {
+        return true;
+      }
+    }
+  }
+  lastState = reading;
+  return false;
 }
 
 void IRAM_ATTR interruptA(){
