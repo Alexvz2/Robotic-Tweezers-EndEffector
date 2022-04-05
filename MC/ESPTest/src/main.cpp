@@ -1,88 +1,188 @@
 #include <Arduino.h>
+#include "ESP32_S2_TimerInterrupt.h"
+
+#include <stdlib.h>
+#include <string.h>
 
 
-// Motor
-#define enB D8
-#define in4 D7
-#define in3 D6
+#define hallA2 9
+#define hallB2 8
 
-// Potentiometer
-#define PWM A0
-int value;
+#define clientPWM1 7
+#define clientPWM2 6
 
-// Direction of motor
-#define Dir D3
-int prevDir = 0;
-int direction;
 
-// Hall Sensors
-#define HallA D5
 
-// ISR
-volatile int pulses = 0;//if the interrupt will change this value, it must be volatile
-bool lock = false;
 
-void IRAM_ATTR interruptA();
-void motorRotation(bool);
+int test = 0;
 
-//=============================================================================================
-//                         SETUP
-//=============================================================================================
+
+
+float des;
+
+
+
+
+
+int sense12, sense22, senseOld12, senseOld22;
+
+ESP32Timer ITimer0(0);
+void setupPins();
+void calibrateMotor();
+void interruptA();
+void interruptB();
+
+
+
+
+
+
+
+
+
 void setup() {
-  // Pin Modes
-  pinMode(enB, OUTPUT);
-  pinMode(in3, OUTPUT);
-  pinMode(in4, OUTPUT);
-  pinMode(Dir, INPUT);
-  pinMode(HallA, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(HallA), interruptA, CHANGE);//Interrupt initialization
+
+    Serial.begin(9600);
+
+    setupPins();
+
+    calibrateMotor();
 
 
-  // Set initial rotation direction
-  digitalWrite(in3, LOW);
-  digitalWrite(in4, HIGH);
 
-  direction = digitalRead(Dir);
+    attachInterrupt(digitalPinToInterrupt(hallA2), hallSense2, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(hallB2), hallSense2, CHANGE);
+    delay(1000);
+    analogWrite(clientPWM1, 0);
+    analogWrite(clientPWM2, 1024 * 0.04);
+    delay(350);
+    analogWrite(clientPWM1, 0);
+    analogWrite(clientPWM2, 0);
 
-  Serial.begin(115200);
-  analogWrite(enB, 50);
+    delay(2000);
+
+
+
+
+
+
+
+
+
+    interrupts();
+
+    delay(1000);
+
+    analogWrite(clientPWM1, 0);
+    analogWrite(clientPWM2, 1024 * 0.04);
 }
- 
-//=============================================================================================
-//                         LOOP
-//=============================================================================================
+
+
+
+
+void hallSense2() {
+
+
+    noInterrupts();
+
+    sense12 = digitalRead(hallA2);
+    sense22 = digitalRead(hallB2);
+
+    if (senseOld12 && senseOld22) {
+        if (sense12 && !sense22)
+            des = des + 1 / 65.25 / 2 * (1.3 / 0.4);
+        if (!sense12 && sense22)
+            des = des - 1 / 65.25 / 2 * (1.3 / 0.4);
+    }
+    else if (senseOld12 && !senseOld22) {
+        if (!sense12 && !sense22)
+            des = des + 1 / 65.25 / 2 * (1.3 / 0.4);
+        if (sense12 && sense22)
+            des = des - 1 / 65.25 / 2 * (1.3 / 0.4);
+    }
+    else if (!senseOld12 && !senseOld22) {
+        if (!sense12 && sense22)
+            des = des + 1 / 65.25 / 2 * (1.3 / 0.4);
+        if (sense12 && !sense22)
+            des = des - 1 / 65.25 / 2 * (1.3 / 0.4);
+    }
+    else if (!senseOld12 && senseOld22) {
+        if (sense12 && sense22)
+            des = des + 1 / 65.25 / 2 * (1.3 / 0.4);
+        if (!sense12 && !sense22)
+            des = des - 1 / 65.25 / 2 * (1.3 / 0.4);
+    }
+
+
+
+    senseOld12 = sense12;
+    senseOld22 = sense22;
+
+    interrupts();
+
+}
+
+
+
+
+
+
 void loop() {
-  value = map(analogRead(PWM), 0, 1023, 30, 100);
-  Serial.println(value);
-  if (lock)
-  {
-    Serial.println(pulses);//see the counts advance
-    lock = false;
-  }
+    // put your main code here, to run repeatedly:
 
-  // Direction Logic
-  direction = digitalRead(Dir);
-  if (direction != prevDir)
-  {
-    prevDir = direction;
-    motorRotation(direction);
-  }
-  delay(100);
+
+
+
+    Serial.print("des: ");
+    Serial.println(des);
+
+    if (des < 0) {
+        analogWrite(clientPWM1, 0);
+        analogWrite(clientPWM2, 0);
+    }
+    else {
+        analogWrite(clientPWM1, 0);
+        analogWrite(clientPWM2, 1024 * 0.04);
+    }
+
+
+    delay(1);
+
+
+
+
 }
 
-void motorRotation(bool rotation){
-  if (rotation) {
-    digitalWrite(in3, HIGH);
-    digitalWrite(in4, LOW);
-    Serial.println("Right");
-  } else  {
-    digitalWrite(in3, LOW);
-    digitalWrite(in4, HIGH);
-    Serial.println("Left");
-  }
+void calibrateMotor() {
+
+    analogWrite(clientPWM1, 1024 * 0.04);
+    analogWrite(clientPWM2, 0);
+    delay(200);
+
+    delay(1000);
+
+    analogWrite(clientPWM1, 0);
+    analogWrite(clientPWM2, 0);
+    delay(1000);
+
+
+
+    des = 1.3;
+
+    Serial.println("Calibration Finished");
 }
 
-void IRAM_ATTR interruptA(){
-  pulses++;
-  lock = true;
-}//end Interrupt Service Routine (ISR)
+
+
+void setupPins() {
+    // Setting PWM pins as outputs
+
+    pinMode(clientPWM1, OUTPUT);
+    pinMode(clientPWM2, OUTPUT);
+
+    pinMode(hallA2, INPUT_PULLUP);
+    pinMode(hallB2, INPUT_PULLUP);
+
+
+}
+
